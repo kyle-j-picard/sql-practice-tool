@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Drill and Practice Tool</title>
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* A simple style for the textarea to ensure it's a good size */
+        textarea {
+            font-family: monospace;
+            min-height: 150px;
+        }
+        /* Style for the active category button */
+        .category-button.active {
+            background-color: #3b82f6; /* bg-blue-600 */
+            color: white;
+            font-weight: 600;
+        }
+        /* NEW STYLES for completed categories */
+        .category-button.completed {
+            color: #15803d; /* text-green-700 */
+            font-weight: 600;
+        }
+        /* Style for a category that is both active AND completed */
+        .category-button.active.completed {
+            color: #dcfce7; /* text-green-100 */
+        }
+    </style>
+</head>
+<body class="h-full font-sans text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-blue-700">SQL Drill and Practice Tool</h1>
+            <!-- Updated helper text -->
+            <p class="text-lg text-gray-600">Select a category on the left and answer the prompts on the right.</p>
+        </header>
+
+        <!-- Main two-column layout -->
+        <div class="flex flex-col md:flex-row md:space-x-6">
+
+            <!-- Left Column: New Category List -->
+            <div class="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md mb-6 md:mb-0 h-fit max-h-[80vh] overflow-y-auto">
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2 text-gray-700">Practice Categories</h2>
+                
+                <!-- JavaScript will populate this list -->
+                <ol id="category-list" class="space-y-1 list-decimal list-inside"></ol>
+            </div>
+
+            <!-- Right Column: Interactive Quiz -->
+            <div class="w-full md:w-2/3 bg-white p-6 rounded-lg shadow-md">
+                <!-- Updated question count (e.g., "1 of 4") -->
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Question <span id="question-number">1</span> of 4</h2>
+                
+                <!-- Question Display Area -->
+                <div id="question-prompt" class="bg-blue-50 p-4 rounded-lg text-gray-900 border border-blue-200">
+                    <!-- JavaScript will insert the question here -->
+                </div>
+
+                <!-- Answer Input Area -->
+                <div class="mt-4">
+                    <label for="user-answer" class="block text-sm font-medium text-gray-700 mb-1">Your Answer:</label>
+                    <textarea id="user-answer" rows="6" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <button id="check-answer" class="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 transition duration-150">Check Answer</button>
+                    <button id="show-answer" class="bg-gray-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-gray-600 transition duration-150">Show Answer</button>
+                    <button id="next-question" class="bg-green-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-green-700 transition duration-150">Next Question</button>
+                </div>
+
+                <!-- Feedback Message Area -->
+                <div id="feedback-message" class="hidden mt-4 p-3 rounded-md text-center font-medium">
+                    <!-- "Correct!" or "Incorrect" -->
+                </div>
+
+                <!-- Correct Answer Display Area -->
+                <div id="correct-answer-area" class="hidden mt-4">
+                    <h4 class="font-semibold text-gray-700">Correct Answer:</h4>
+                    <pre id="correct-answer-text" class="bg-gray-900 text-green-300 p-4 rounded-md overflow-x-auto text-sm"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All JavaScript Logic -->
+    <script>
+        // --- 1. DEFINE QUESTIONS & CATEGORIES ---
+
+        // The 32 categories for the 128 questions (32 * 4 = 128)
+        const questionCategories = [
+            "CREATE TABLE (Basic)",
+            "CREATE TABLE (Foreign Key)",
+            "ALTER TABLE - ADD COLUMN",
+            "CREATE VIEW",
+            "DROP VIEW",
+            "ALTER TABLE - ADD PRIMARY KEY",
+            "ALTER TABLE - ADD FOREIGN KEY",
+            "CREATE INDEX",
+            "SELECT... WHERE",
+            "INSERT INTO",
+            "DELETE FROM",
+            "UPDATE... SET",
+            "SELECT *",
+            "SELECT... ORDER BY",
+            "GROUP BY... COUNT",
+            "COUNT(*)... WHERE",
+            "LEFT JOIN",
+            "ALTER TABLE - DROP COLUMN",
+            "TRUNCATE TABLE",
+            "DROP TABLE",
+            "SUM() Aggregate",
+            "AVG() Aggregate",
+            "MAX() Aggregate",
+            "MIN() Aggregate",
+            "GROUP BY... HAVING",
+            "Joins (INNER & RIGHT)",
+            "ALTER TABLE (Modify/Change)",
+            "Advanced CREATE (CHECK, Composite)",
+            "Advanced CREATE (ON DELETE, UNSIGNED)",
+            "SELECT DISTINCT & DROP INDEX",
+            // --- NEW CATEGORIES START HERE ---
+            "Subqueries (in WHERE clause)",
+            "GROUP BY with Aggregates (MAX, MIN, AVG)"
+        ];
+        
+        // Array of question objects
+        const drillQuestions = [
+            // --- Q1 (Original) ---
+            {
+                prompt: "The `Customer` table will have:\n" +
+                        "• `CustomerID` - positive integer, auto-incrementing, primary key\n" +
+                        "• `FirstName` - variable-length string, max 50, not null\n" +
+                        "• `LastName` - variable-length string, max 50, not null\n" +
+                        "• `Email` - variable-length string, max 100, unique\n" +
+                        "• `JoinDate` - date\n\n" +
+                        "Write a SQL statement to create the `Customer` table.",
+                answer: "CREATE TABLE Customer ( CustomerID INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, FirstName VARCHAR(50) NOT NULL, LastName VARCHAR(50) NOT NULL, Email VARCHAR(100) UNIQUE, JoinDate DATE );"
+            },
+            // --- Q1 (Variation 1) ---
+            {
+                prompt: "A `Books` table is needed with these fields:\n" +
+                        "• `BookID` - integer, auto-increments, primary key\n" +
+                        "• `Title` - variable-length string, max 200, must have a value\n" +
+                        "• `ISBN` - variable-length string, max 13, must be unique\n" +
+                        "• `PublishedYear` - integer\n\n" +
+                        "Write the SQL to create the `Books` table.",
+                answer: "CREATE TABLE Books ( BookID INT AUTO_INCREMENT PRIMARY KEY, Title VARCHAR(200) NOT NULL, ISBN VARCHAR(13) UNIQUE, PublishedYear INT );"
+            },
+            // --- Q1 (Variation 2) ---
+            {
+                prompt: "Define a `Users` table with the following columns:\n" +
+                        "• `UserID` - positive integer, primary key, generates its own value\n" +
+                        "• `Username` - variable-length string, max 30, cannot be null, must be unique\n" +
+                        "• `PasswordHash` - variable-length string, max 255, cannot be null\n" +
+                        "• `CreatedAt` - timestamp\n\n" +
+                        "Write the SQL to create this `Users` table.",
+                answer: "CREATE TABLE Users ( UserID INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, Username VARCHAR(30) NOT NULL UNIQUE, PasswordHash VARCHAR(255) NOT NULL, CreatedAt TIMESTAMP );"
+            },
+            // --- Q1 (Variation 3) ---
+            {
+                prompt: "A `Projects` table needs to be created with this structure:\n" +
+                        "• `ProjectID` - integer, primary key, auto-increment\n" +
+                        "• `ProjectName` - variable-length string, max 100, not null\n" +
+                        "• `ClientName` - variable-length string, max 100\n" +
+                        "• `StartDate` - date, must have a value\n\n" +
+                        "Write the SQL statement to create the `Projects` table.",
+                answer: "CREATE TABLE Projects ( ProjectID INT AUTO_INCREMENT PRIMARY KEY, ProjectName VARCHAR(100) NOT NULL, ClientName VARCHAR(100), StartDate DATE NOT NULL );"
+            },
+            // --- Q2 (Original) ---
+            {
+                prompt: "The `Department` table has `ID` (integer, primary key). The `Employee` table needs:\n" +
+                        "• `EmployeeID` - integer, primary key\n" +
+                        "• `FullName` - variable-length string, max 100\n" +
+                        "• `DepartmentID` - integer\n\n" +
+                        "Write the SQL to create the `Employee` table. Designate `DepartmentID` as a foreign key referencing `Department(ID)`.",
+                answer: "CREATE TABLE Employee ( EmployeeID INT PRIMARY KEY, FullName VARCHAR(100), DepartmentID INT, FOREIGN KEY (DepartmentID) REFERENCES Department(ID) );"
+            },
+            // --- Q2 (Variation 1) ---
+            {
+                prompt: "The `Authors` table has `AuthorID` (int, pk). The `Books` table needs:\n" +
+                        "• `BookID` - integer, primary key\n" +
+                        "• `Title` - variable-length string, max 200\n" +
+                        "• `AuthorID` - integer\n\n" +
+                        "Write the SQL to create the `Books` table, linking `AuthorID` to the `Authors` table's primary key.",
+                answer: "CREATE TABLE Books ( BookID INT PRIMARY KEY, Title VARCHAR(200), AuthorID INT, FOREIGN KEY (AuthorID) REFERENCES Authors(AuthorID) );"
+            },
+            // --- Q2 (Variation 2) ---
+            {
+                prompt: "The `Customers` table exists with `CustomerID` (int, pk). An `Orders` table is required:\n" +
+                        "• `OrderID` - integer, primary key\n" +
+                        "• `OrderDate` - date\n" +
+                        "• `CustID` - integer\n\n" +
+                        "Write the SQL to create `Orders`. `CustID` must reference the `Customers` table's `CustomerID`.",
+                answer: "CREATE TABLE Orders ( OrderID INT PRIMARY KEY, OrderDate DATE, CustID INT, FOREIGN KEY (CustID) REFERENCES Customers(CustomerID) );"
+            },
+            // --- Q2 (Variation 3) ---
+            {
+                prompt: "A `Posts` table exists (`PostID`, int, pk). A `Comments` table is needed:\n" +
+                        "• `CommentID` - integer, primary key\n" +
+                        "• `CommentText` - text\n" +
+                        "• `PostID` - integer\n\n" +
+                        "Write the SQL to create the `Comments` table. Ensure `PostID` is a foreign key to `Posts(PostID)`.",
+                answer: "CREATE TABLE Comments ( CommentID INT PRIMARY KEY, CommentText TEXT, PostID INT, FOREIGN KEY (PostID) REFERENCES Posts(PostID) );"
+            },
+            // --- Q3 (Original) ---
+            {
+                prompt: "The `Product` table exists. A new column must be added:\n" +
+                        "• Column name: `StockQuantity`\n" +
+                        "• Data type: `integer`, cannot be negative\n\n" +
+                        "Write the SQL statement to add this column.",
+                answer: "ALTER TABLE Product ADD StockQuantity INT UNSIGNED;"
+            },
+            // --- Q3 (Variation 1) ---
+            {
+                prompt: "The `Users` table exists. A new column must be added:\n" +
+                        "• Column name: `LastLogin`\n" +
+                        "• Data type: `datetime`\n\n" +
+                        "Write the SQL statement to add this column to the `Users` table.",
+                answer: "ALTER TABLE Users ADD LastLogin DATETIME;"
+            },
+            // --- Q3 (Variation 2) ---
+            {
+                prompt: "The `Customer` table needs to be modified. A new column is required:\n" +
+                        "• Column name: `PhoneNumber`\n" +
+                        "• Data type: `variable-length string, max 20`\n\n" +
+                        "Write the SQL to add this `PhoneNumber` column.",
+                answer: "ALTER TABLE Customer ADD PhoneNumber VARCHAR(20);"
+            },
+            // --- Q3 (Variation 3) ---
+            {
+                prompt: "The `Posts` table needs a new column added:\n" +
+                        "• Column name: `IsPublished`\n" +
+                        "• Data type: `boolean`, with a default value of `false`\n\n" +
+                        "Write the SQL statement to modify the `Posts` table.",
+                answer: "ALTER TABLE Posts ADD IsPublished BOOLEAN DEFAULT FALSE;"
+            },
+            // --- Q4 (Original) ---
+            {
+                prompt: "The `Employee` table has `EmployeeID`, `FullName`, `Salary`, and `DepartmentID`.\n" +
+                        "Write a SQL statement to create a view named `HighEarners` that contains the `FullName` and `Salary` for all employees with a `Salary` over 80000.",
+                answer: "CREATE VIEW HighEarners AS SELECT FullName, Salary FROM Employee WHERE Salary > 80000;"
+            },
+            // --- Q4 (Variation 1) ---
+            {
+                prompt: "The `Product` table has `SKU`, `Name`, `Price`, and `OnSale` (boolean).\n" +
+                        "Write a SQL statement to create a view named `OnSaleProducts` showing the `Name` and `Price` for all products where `OnSale` is `true`.",
+                answer: "CREATE VIEW OnSaleProducts AS SELECT Name, Price FROM Product WHERE OnSale = TRUE;"
+            },
+            // --- Q4 (Variation 2) ---
+            {
+                prompt: "The `Customer` table has `CustomerID`, `FirstName`, `LastName`, and `JoinDate`.\n" +
+                        "Write the SQL to create a view called `RecentCustomers` that shows the `FirstName` and `JoinDate` for customers who joined after '2023-01-01'.",
+                answer: "CREATE VIEW RecentCustomers AS SELECT FirstName, JoinDate FROM Customer WHERE JoinDate > '2023-01-01';"
+            },
+            // --- Q4 (Variation 3) ---
+            {
+                prompt: "The `Orders` table has `OrderID`, `CustomerID`, and `TotalAmount`.\n" +
+                        "Write the SQL to create a view named `LargeOrders` that contains the `OrderID` and `TotalAmount` for all orders over 1000.",
+                answer: "CREATE VIEW LargeOrders AS SELECT OrderID, TotalAmount FROM Orders WHERE TotalAmount > 1000;"
+            },
+            // --- Q5 (Original) ---
+            {
+                prompt: "A database has a view named `HighEarners`.\n" +
+                        "Write a SQL statement to delete this view.",
+                answer: "DROP VIEW HighEarners;"
+            },
+            // --- Q5 (Variation 1) ---
+            {
+                prompt: "A view named `OnSaleProducts` is no longer needed.\n" +
+                        "Write the SQL to remove this view from the database.",
+                answer: "DROP VIEW OnSaleProducts;"
+            },
+            // --- Q5 (Variation 2) ---
+            {
+                prompt: "The database contains a view called `RecentCustomers`.\n" +
+                        "Write the SQL command to permanently delete this view.",
+                answer: "DROP VIEW RecentCustomers;"
+            },
+            // --- Q5 (Variation 3) ---
+            {
+                prompt: "A view named `LargeOrders` exists and must be deleted.\n" +
+                        "Write the SQL statement to drop this view.",
+                answer: "DROP VIEW LargeOrders;"
+            },
+            // --- Q6 (Original) ---
+            {
+                prompt: "The `Department` table (columns `ID`, `Name`) was created without a primary key.\n" +
+                        "Write a SQL statement to modify the `Department` table to make the `ID` column the primary key.",
+                answer: "ALTER TABLE Department ADD PRIMARY KEY (ID);"
+            },
+            // --- Q6 (Variation 1) ---
+            {
+                prompt: "The `Categories` table (`CategoryID`, `CategoryName`) needs a primary key.\n" +
+                        "Write the SQL to alter the `Categories` table, setting `CategoryID` as the primary key.",
+                answer: "ALTER TABLE Categories ADD PRIMARY KEY (CategoryID);"
+            },
+            // --- Q6 (Variation 2) ---
+            {
+                prompt: "The `Students` table (`StudentID`, `Name`) was defined missing its primary key.\n" +
+                        "Write the SQL to modify `Students` and add a primary key constraint on the `StudentID` column.",
+                answer: "ALTER TABLE Students ADD PRIMARY KEY (StudentID);"
+            },
+            // --- Q6 (Variation 3) ---
+            {
+                prompt: "The `Tags` table has columns `TagID` and `TagName`. `TagID` should be the primary key.\n" +
+                        "Write the SQL statement to add a primary key constraint on `TagID` for the `Tags` table.",
+                answer: "ALTER TABLE Tags ADD PRIMARY KEY (TagID);"
+            },
+            // --- Q7 (Original) ---
+            {
+                prompt: "The `Orders` (`OrderID`, `CustomerID`) and `Customer` (`CustomerID`, `FirstName`) tables exist.\n" +
+                        "Write a SQL statement to designate `Orders.CustomerID` as a foreign key referencing `Customer.CustomerID`.",
+                answer: "ALTER TABLE Orders ADD FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID);"
+            },
+            // --- Q7 (Variation 1) ---
+            {
+                prompt: "The `Books` (`BookID`, `AuthorID`) and `Authors` (`AuthorID`, `Name`) tables exist.\n" +
+                        "Write the SQL to add a foreign key constraint to the `Books` table, linking `AuthorID` to the `Authors` table.",
+                answer: "ALTER TABLE Books ADD FOREIGN KEY (AuthorID) REFERENCES Authors(AuthorID);"
+            },
+            // --- Q7 (Variation 2) ---
+            {
+                prompt: "You have a `Comments` table (`CommentID`, `PostID`) and a `Posts` table (`PostID`, `Title`).\n" +
+                        "Write the SQL to alter `Comments`, making `PostID` a foreign key that references the `Posts` table.",
+                answer: "ALTER TABLE Comments ADD FOREIGN KEY (PostID) REFERENCES Posts(PostID);"
+            },
+            // --- Q7 (Variation 3) ---
+            {
+                prompt: "You have `Enrollments` (`EnrollmentID`, `StudentID`) and `Students` (`StudentID`, `Name`).\n" +
+                        "Write the SQL to add a constraint to `Enrollments` so that `StudentID` references the `Students` table.",
+                answer: "ALTER TABLE Enrollments ADD FOREIGN KEY (StudentID) REFERENCES Students(StudentID);"
+            },
+            // --- Q8 (Original) ---
+            {
+                prompt: "Queries on the `Employee` table are slow when searching by `LastName`.\n" +
+                        "Write a SQL statement to create an index named `idx_lastname` on the `LastName` column.",
+                answer: "CREATE INDEX idx_lastname ON Employee(LastName);"
+            },
+            // --- Q8 (Variation 1) ---
+            {
+                prompt: "Searching the `Customer` table by `Email` is taking too long.\n" +
+                        "Write the SQL to create an index named `idx_email` on the `Email` column to speed up queries.",
+                answer: "CREATE INDEX idx_email ON Customer(Email);"
+            },
+            // --- Q8 (Variation 2) ---
+            {
+                prompt: "The `Product` table is often queried by its `SKU` column, and it's slow.\n" +
+                        "Write a SQL statement to create an index named `idx_sku` on the `SKU` column.",
+                answer: "CREATE INDEX idx_sku ON Product(SKU);"
+            },
+            // --- Q8 (Variation 3) ---
+            {
+                prompt: "To improve performance when looking up books by `Title`, an index is needed.\n" +
+                        "Write the SQL to create an index named `idx_title` on the `Title` column of the `Books` table.",
+                answer: "CREATE INDEX idx_title ON Books(Title);"
+            },
+            // --- Q9 (Original) ---
+            {
+                prompt: "The `Product` table has `Name`, `Category`, and `Price`.\n" +
+                        "Write a SQL query to retrieve the `Name` and `Price` for all records with a `Category` of 'Electronics'.",
+                answer: "SELECT Name, Price FROM Product WHERE Category = 'Electronics';"
+            },
+            // --- Q9 (Variation 1) ---
+            {
+                prompt: "The `Employee` table has `FullName`, `Salary`, and `DepartmentID`.\n" +
+                        "Write a SQL query to get the `FullName` and `Salary` for all employees where `DepartmentID` is 5.",
+                answer: "SELECT FullName, Salary FROM Employee WHERE DepartmentID = 5;"
+            },
+            // --- Q9 (Variation 2) ---
+            {
+                prompt: "The `Orders` table has `OrderID`, `Status`, and `TotalAmount`.\n" +
+                        "Write a SQL query to select the `OrderID` and `TotalAmount` for all orders with a `Status` of 'Shipped'.",
+                answer: "SELECT OrderID, TotalAmount FROM Orders WHERE Status = 'Shipped';"
+            },
+            // --- Q9 (Variation 3) ---
+            {
+                prompt: "The `Students` table has `Name`, `Major`, and `GPA`.\n" +
+                        "Write a SQL query to fetch the `Name` and `GPA` for all students whose `Major` is 'Computer Science'.",
+                answer: "SELECT Name, GPA FROM Students WHERE Major = 'Computer Science';"
+            },
+            // --- Q10 (Original) ---
+            {
+                prompt: "Data needs to be added to the `Department` table (`ID`, `Name`, `Location`).\n" +
+                        "• Data: ID: 5, Name: 'Marketing', Location: 'New York'\n\n" +
+                        "Write a SQL statement to insert this data.",
+                answer: "INSERT INTO Department (ID, Name, Location) VALUES (5, 'Marketing', 'New York');"
+            },
+            // --- Q10 (Variation 1) ---
+            {
+                prompt: "A new product needs to be added to the `Product` table (`SKU`, `Name`, `Price`).\n" +
+                        "• Data: SKU: 'XYZ-123', Name: 'Wireless Mouse', Price: 29.99\n\n" +
+                        "Write the SQL to insert this new record.",
+                answer: "INSERT INTO Product (SKU, Name, Price) VALUES ('XYZ-123', 'Wireless Mouse', 29.99);"
+            },
+            // --- Q10 (Variation 2) ---
+            {
+                prompt: "A new user signed up. Add them to the `Users` table (`Username`, `Email`).\n" +
+                        "• Data: Username: 'jdoe', Email: 'j.doe@example.com'\n\n" +
+                        "Write the SQL statement to insert this user.",
+                answer: "INSERT INTO Users (Username, Email) VALUES ('jdoe', 'j.doe@example.com');"
+            },
+            // --- Q10 (Variation 3) ---
+            {
+                prompt: "Add a new record to the `Employee` table (`FullName`, `Salary`, `DepartmentID`).\n" +
+                        "• Data: FullName: 'Alice Smith', Salary: 62000, DepartmentID: 3\n\n" +
+                        "Write the SQL statement to add this employee.",
+                answer: "INSERT INTO Employee (FullName, Salary, DepartmentID) VALUES ('Alice Smith', 62000, 3);"
+            },
+            // --- Q11 (Original) ---
+            {
+                prompt: "The `Employee` table has an `EmployeeID` column.\n" +
+                        "Write a SQL statement to delete the row with the `EmployeeID` value of 102.",
+                answer: "DELETE FROM Employee WHERE EmployeeID = 102;"
+            },
+            // --- Q11 (Variation 1) ---
+            {
+                prompt: "The `Product` table has a `SKU` column.\n" +
+                        "Write a SQL statement to remove the product with the `SKU` 'OLD-001'.",
+                answer: "DELETE FROM Product WHERE SKU = 'OLD-001';"
+            },
+            // --- Q11 (Variation 2) ---
+            {
+                prompt: "The `Customer` table has an `Email` column.\n" +
+                        "Write the SQL to delete the customer record where the `Email` is 'spam@example.com'.",
+                answer: "DELETE FROM Customer WHERE Email = 'spam@example.com';"
+            },
+            // --- Q11 (Variation 3) ---
+            {
+                prompt: "The `Orders` table has an `OrderID` column.\n" +
+                        "Write a SQL statement to delete the order with `OrderID` 9012.",
+                answer: "DELETE FROM Orders WHERE OrderID = 9012;"
+            },
+            // --- Q12 (Original) ---
+            {
+                prompt: "The `Product` table has `SKU`, `Name`, and `Price`.\n" +
+                        "Write a SQL statement to update the `Price` to 499.99 for the product with the `SKU` 'A-987'.",
+                answer: "UPDATE Product SET Price = 499.99 WHERE SKU = 'A-987';"
+            },
+            // --- Q12 (Variation 1) ---
+            {
+                prompt: "The `Employee` table has `EmployeeID` and `Salary`.\n" +
+                        "Write a SQL statement to change the `Salary` to 75000 for the employee with `EmployeeID` 105.",
+                answer: "UPDATE Employee SET Salary = 75000 WHERE EmployeeID = 105;"
+            },
+            // --- Q12 (Variation 2) ---
+            {
+                prompt: "The `Customer` table has `CustomerID` and `LastName`.\n" +
+                        "Write the SQL to modify the `LastName` to 'Smith-Jones' for the customer with `CustomerID` 301.",
+                answer: "UPDATE Customer SET LastName = 'Smith-Jones' WHERE CustomerID = 301;"
+            },
+            // --- Q12 (Variation 3) ---
+            {
+                prompt: "The `Orders` table has `OrderID` and `Status`.\n" +
+                        "Write the SQL to update the `Status` to 'Cancelled' for the order with `OrderID` 450.",
+                answer: "UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = 450;"
+            },
+            // --- Q13 (Original) ---
+            {
+                prompt: "The database contains a table named `Customer`.\n" +
+                        "Write a SQL query to return all data from the `Customer` table without referencing column names.",
+                answer: "SELECT * FROM Customer;"
+            },
+            // --- Q13 (Variation 1) ---
+            {
+                prompt: "You need to see every column and every row from the `Employee` table.\n" +
+                        "Write a SQL query to select all data from the `Employee` table.",
+                answer: "SELECT * FROM Employee;"
+            },
+            // --- Q13 (Variation 2) ---
+            {
+                prompt: "A table named `Product` exists.\n" +
+                        "Write a SQL query to retrieve all fields for all records in the `Product` table.",
+                answer: "SELECT * FROM Product;"
+            },
+            // --- Q13 (Variation 3) ---
+            {
+                prompt: "Display the entire contents of the `Orders` table.\n" +
+                        "Write a SQL query to show all rows and all columns from `Orders`.",
+                answer: "SELECT * FROM Orders;"
+            },
+            // --- Q14 (Original) ---
+            {
+                prompt: "The `Product` table has `Name` and `Price`.\n" +
+                        "Write a SQL query to display all `Name` values in descending alphabetical order (Z-A).",
+                answer: "SELECT Name FROM Product ORDER BY Name DESC;"
+            },
+            // --- Q14 (Variation 1) ---
+            {
+                prompt: "The `Employee` table has `FullName` and `HireDate`.\n" +
+                        "Write a SQL query to list all `FullName` values, starting with the most recently hired.",
+                answer: "SELECT FullName FROM Employee ORDER BY HireDate DESC;"
+            },
+            // --- Q14 (Variation 2) ---
+            {
+                prompt: "The `Customer` table has `LastName`.\n" +
+                        "Write a SQL query to show all `LastName` values in ascending alphabetical order (A-Z).",
+                answer: "SELECT LastName FROM Customer ORDER BY LastName ASC;"
+            },
+            // --- Q14 (Variation 3) ---
+            {
+                prompt: "The `Orders` table has `OrderID` and `TotalAmount`.\n" +
+                        "Write a SQL query to display `OrderID` sorted by `TotalAmount` from highest to lowest.",
+                answer: "SELECT OrderID FROM Orders ORDER BY TotalAmount DESC;"
+            },
+            // --- Q15 (Original) ---
+            {
+                prompt: "The `Employee` table has `DepartmentID`.\n" +
+                        "Write a SQL query to output the unique `DepartmentID` values and the number of employees in each as `EmployeeCount`. Sort by `DepartmentID` ascending.",
+                answer: "SELECT DepartmentID, COUNT(*) AS EmployeeCount FROM Employee GROUP BY DepartmentID ORDER BY DepartmentID ASC;"
+            },
+            // --- Q15 (Variation 1) ---
+            {
+                prompt: "The `Product` table has `Category`.\n" +
+                        "Write a SQL query to show each `Category` and the count of products in it, aliased as `ProductCount`.",
+                answer: "SELECT Category, COUNT(*) AS ProductCount FROM Product GROUP BY Category;"
+            },
+            // --- Q15 (Variation 2) ---
+            {
+                prompt: "The `Orders` table has `CustomerID`.\n" +
+                        "Write a SQL query to display each `CustomerID` and the total number of orders they placed, named `OrderTotal`.",
+                answer: "SELECT CustomerID, COUNT(*) AS OrderTotal FROM Orders GROUP BY CustomerID;"
+            },
+            // --- Q15 (Variation 3) ---
+            {
+                prompt: "The `Students` table has `Major`.\n" +
+                        "Write a SQL query to list every `Major` and the number of students in each, aliased as `StudentCount`. Sort by `Major` A-Z.",
+                answer: "SELECT Major, COUNT(*) AS StudentCount FROM Students GROUP BY Major ORDER BY Major ASC;"
+            },
+            // --- Q16 (Original) ---
+            {
+                prompt: "The `Orders` table has `OrderID` and `OrderDate`.\n" +
+                        "Write a SQL query to return how many orders were placed on '2023-10-27'.",
+                answer: "SELECT COUNT(*) FROM Orders WHERE OrderDate = '2023-10-27';"
+            },
+            // --- Q16 (Variation 1) ---
+            {
+                prompt: "The `Employee` table has `EmployeeID` and `DepartmentID`.\n" +
+                        "Write a SQL query to find the number of employees in `DepartmentID` 3.",
+                answer: "SELECT COUNT(*) FROM Employee WHERE DepartmentID = 3;"
+            },
+            // --- Q16 (Variation 2) ---
+            {
+                prompt: "The `Product` table has `ProductID` and `Category`.\n" +
+                        "Write a SQL query to count how many products are in the 'Apparel' category.",
+                answer: "SELECT COUNT(*) FROM Product WHERE Category = 'Apparel';"
+            },
+            // --- Q16 (Variation 3) ---
+            {
+                prompt: "The `Users` table has `UserID` and `Status`.\n" +
+                        "Write a SQL query to return the total count of users with a `Status` of 'Active'.",
+                answer: "SELECT COUNT(*) FROM Users WHERE Status = 'Active';"
+            },
+            // --- Q17 (Original) ---
+            {
+                prompt: "The `Employee` table has `FullName` and `DepartmentID`. The `Department` table has `ID` and `Name`.\n" +
+                        "Write a SQL query to display the `FullName` of every employee and their department's `Name`. Include employees even if they are not in a department.",
+                answer: "SELECT Employee.FullName, Department.Name FROM Employee LEFT JOIN Department ON Employee.DepartmentID = Department.ID;"
+            },
+            // --- Q17 (Variation 1) ---
+            {
+                prompt: "The `Customer` table has `Name` and `CustomerID`. The `Orders` table has `OrderID` and `CustomerID`.\n" +
+                        "Write a SQL query to show every customer's `Name` and their `OrderID`. Include customers who have placed no orders.",
+                answer: "SELECT Customer.Name, Orders.OrderID FROM Customer LEFT JOIN Orders ON Customer.CustomerID = Orders.CustomerID;"
+            },
+            // --- Q17 (Variation 2) ---
+            {
+                prompt: "The `Posts` table has `Title` and `PostID`. The `Comments` table has `CommentText` and `PostID`.\n" +
+                        "Write a SQL query to list all post `Title` values and their `CommentText`. Include posts that have no comments.",
+                answer: "SELECT Posts.Title, Comments.CommentText FROM Posts LEFT JOIN Comments ON Posts.PostID = Comments.PostID;"
+            },
+            // --- Q17 (Variation 3) ---
+            {
+                prompt: "The `Authors` table has `Name` and `AuthorID`. The `Books` table has `Title` and `AuthorID`.\n" +
+                        "Write a SQL query to display each author's `Name` and their book `Title`. Include authors who have not written any books listed.",
+                answer: "SELECT Authors.Name, Books.Title FROM Authors LEFT JOIN Books ON Authors.AuthorID = Books.AuthorID;"
+            },
+            // --- Q18 (Original) ---
+            {
+                prompt: "The `Customer` table has a column `JoinDate` that is no longer needed.\n" +
+                        "Write a SQL statement to remove the `JoinDate` column.",
+                answer: "ALTER TABLE Customer DROP COLUMN JoinDate;"
+            },
+            // --- Q18 (Variation 1) ---
+            {
+                prompt: "The `Employee` table has a column `TempNotes` that was used for a migration and is now obsolete.\n" +
+                        "Write the SQL to delete the `TempNotes` column.",
+                answer: "ALTER TABLE Employee DROP COLUMN TempNotes;"
+            },
+            // --- Q18 (Variation 2) ---
+            {
+                prompt: "The `Product` table contains an old `OldPrice` column that needs to be removed.\n" +
+                        "Write a SQL statement to drop the `OldPrice` column.",
+                answer: "ALTER TABLE Product DROP COLUMN OldPrice;"
+            },
+            // --- Q18 (Variation 3) ---
+            {
+                prompt: "The `Users` table has a `FaxNumber` column that is empty and no longer required.\n" +
+                        "Write the SQL to remove the `FaxNumber` column from the `Users` table.",
+                answer: "ALTER TABLE Users DROP COLUMN FaxNumber;"
+            },
+            // --- Q19 (Original) ---
+            {
+                prompt: "The `ErrorLog` table needs to be emptied, but the table structure must remain.\n" +
+                        "Write a SQL statement to delete all data from `ErrorLog` quickly.",
+                answer: "TRUNCATE TABLE ErrorLog;"
+            },
+            // --- Q19 (Variation 1) ---
+            {
+                prompt: "The `TempUploads` table must be cleared of all data for the next batch run. The table itself must not be deleted.\n" +
+                        "Write the SQL to quickly remove all rows from `TempUploads`.",
+                answer: "TRUNCATE TABLE TempUploads;"
+            },
+            // --- Q19 (Variation 2) ---
+            {
+                prompt: "All records from the `SessionData` table need to be deleted. The table definition must be kept.\n" +
+                        "Write the SQL statement to empty the `SessionData` table.",
+                answer: "TRUNCATE TABLE SessionData;"
+            },
+            // --- Q19 (Variation 3) ---
+            {
+                prompt: "The `DailyStatsCache` table needs to be reset (all data removed) without dropping the table.\n" +
+                        "Write the SQL to truncate the `DailyStatsCache` table.",
+                answer: "TRUNCATE TABLE DailyStatsCache;"
+            },
+            // --- Q20 (Original) ---
+            {
+                prompt: "The table `Old_Promotions` is no longer needed.\n" +
+                        "Write a SQL statement to delete the table `Old_Promotions` only if it exists.",
+                answer: "DROP TABLE IF EXISTS Old_Promotions;"
+            },
+            // --- Q20 (Variation 1) ---
+            {
+                prompt: "A table named `Archive_2022` needs to be removed from the database.\n" +
+                        "Write the SQL to delete this table, ensuring no error occurs if it's already gone.",
+                answer: "DROP TABLE IF EXISTS Archive_2022;"
+            },
+            // --- Q20 (Variation 2) ---
+            {
+                prompt: "The `Temp_Users` table is obsolete and must be deleted.\n" +
+                        "Write the SQL statement to drop `Temp_Users` if it is present in the database.",
+                answer: "DROP TABLE IF EXISTS Temp_Users;"
+            },
+            // --- Q20 (Variation 3) ---
+            {
+                prompt: "You need to remove the table `Backup_Logs`.\n" +
+                        "Write the SQL to delete this table, but only if it currently exists.",
+                answer: "DROP TABLE IF EXISTS Backup_Logs;"
+            },
+            // --- Q21 (Original) ---
+            {
+                prompt: "The `Orders` table has `TotalAmount`.\n" +
+                        "Write a SQL query to find the total sum of all `TotalAmount` values.",
+                answer: "SELECT SUM(TotalAmount) FROM Orders;"
+            },
+            // --- Q21 (Variation 1) ---
+            {
+                prompt: "The `OrderItems` table has `Quantity`.\n" +
+                        "Write a SQL query to calculate the sum of all `Quantity` values (total items sold).",
+                answer: "SELECT SUM(Quantity) FROM OrderItems;"
+            },
+            // --- Q21 (Variation 2) ---
+            {
+                prompt: "The `Employee` table has `Salary`.\n" +
+                        "Write a SQL query to find the total combined `Salary` of all employees.",
+                answer: "SELECT SUM(Salary) FROM Employee;"
+            },
+            // --- Q21 (Variation 3) ---
+            {
+                prompt: "The `Product` table has `StockQuantity`.\n" +
+                        "Write a SQL query to get the sum of all `StockQuantity` (total items in stock).",
+                answer: "SELECT SUM(StockQuantity) FROM Product;"
+            },
+            // --- Q22 (Original) ---
+            {
+                prompt: "The `Product` table has `Price`.\n" +
+                        "Write a SQL query to find the average `Price` of all products.",
+                answer: "SELECT AVG(Price) FROM Product;"
+            },
+            // --- Q22 (Variation 1) ---
+            {
+                prompt: "The `Employee` table has `Salary`.\n" +
+                        "Write a SQL query to calculate the average `Salary` of all employees.",
+                answer: "SELECT AVG(Salary) FROM Employee;"
+            },
+            // --- Q22 (Variation 2) ---
+            {
+                prompt: "The `Students` table has `GPA`.\n" +
+                        "Write a SQL query to find the mean `GPA` of all students.",
+                answer: "SELECT AVG(GPA) FROM Students;"
+            },
+            // --- Q22 (Variation 3) ---
+            {
+                prompt: "The `Orders` table has `TotalAmount`.\n" +
+                        "Write a SQL query to get the average `TotalAmount` for all orders.",
+                answer: "SELECT AVG(TotalAmount) FROM Orders;"
+            },
+            // --- Q23 (Original) ---
+            {
+                prompt: "The `Employee` table has `Salary`.\n" +
+                        "Write a SQL query to find the highest `Salary`.",
+                answer: "SELECT MAX(Salary) FROM Employee;"
+            },
+            // --- Q23 (Variation 1) ---
+            {
+                prompt: "The `Product` table has `Price`.\n" +
+                        "Write a SQL query to find the `Price` of the most expensive product.",
+                answer: "SELECT MAX(Price) FROM Product;"
+            },
+            // --- Q23 (Variation 2) ---
+            {
+                prompt: "The `Orders` table has `OrderDate`.\n" +
+                        "Write a SQL query to find the most recent `OrderDate`.",
+                answer: "SELECT MAX(OrderDate) FROM Orders;"
+            },
+            // --- Q23 (Variation 3) ---
+            {
+                prompt: "The `Students` table has `GPA`.\n" +
+                        "Write a SQL query to return the highest `GPA`.",
+                answer: "SELECT MAX(GPA) FROM Students;"
+            },
+            // --- Q24 (Original) ---
+            {
+                prompt: "The `Product` table has `Price` and `Category`.\n" +
+                        "Write a SQL query to find the lowest `Price` for products in the 'Apparel' `Category`.",
+                answer: "SELECT MIN(Price) FROM Product WHERE Category = 'Apparel';"
+            },
+            // --- Q24 (Variation 1) ---
+            {
+                prompt: "The `Employee` table has `Salary` and `DepartmentID`.\n" +
+                        "Write a SQL query to find the minimum `Salary` in `DepartmentID` 5.",
+                answer: "SELECT MIN(Salary) FROM Employee WHERE DepartmentID = 5;"
+            },
+            // --- Q24 (Variation 2) ---
+            {
+                prompt: "The `Students` table has `GPA` and `Major`.\n" +
+                        "Write a SQL query to find the lowest `GPA` among 'History' majors.",
+                answer: "SELECT MIN(GPA) FROM Students WHERE Major = 'History';"
+            },
+            // --- Q24 (Variation 3) ---
+            {
+                prompt: "The `Books` table has `PublishedYear` and `Genre`.\n" +
+                        "Write a SQL query to find the earliest `PublishedYear` for a 'Sci-Fi' book.",
+                answer: "SELECT MIN(PublishedYear) FROM Books WHERE Genre = 'Sci-Fi';"
+            },
+            // --- Q25 (Original) ---
+            {
+                prompt: "The `Employee` table has `DepartmentID` and `Salary`.\n" +
+                        "Write a SQL query to show `DepartmentID` and average salary (`AvgSalary`), but only for departments where the average salary is greater than 50000.",
+                answer: "SELECT DepartmentID, AVG(Salary) AS AvgSalary FROM Employee GROUP BY DepartmentID HAVING AVG(Salary) > 50000;"
+            },
+            // --- Q25 (Variation 1) ---
+            {
+                prompt: "The `Product` table has `Category` and `Price`.\n" +
+                        "Write a SQL query to show `Category` and average price (`AvgPrice`), but only for categories where the average price is over 100.",
+                answer: "SELECT Category, AVG(Price) AS AvgPrice FROM Product GROUP BY Category HAVING AVG(Price) > 100;"
+            },
+            // --- Q25 (Variation 2) ---
+            {
+                prompt: "The `Customer` table has `City` and `CustomerID`.\n" +
+                        "Write a SQL query to show `City` and customer count (`CustomerCount`), but only for cities with more than 10 customers.",
+                answer: "SELECT City, COUNT(CustomerID) AS CustomerCount FROM Customer GROUP BY City HAVING COUNT(CustomerID) > 10;"
+            },
+            // --- Q25 (Variation 3) ---
+            {
+                prompt: "The `Orders` table has `CustomerID` and `TotalAmount`.\n" +
+                        "Write a SQL query to show `CustomerID` and total spend (`TotalSpend`), but only for customers whose total spend is greater than 5000.",
+                answer: "SELECT CustomerID, SUM(TotalAmount) AS TotalSpend FROM Orders GROUP BY CustomerID HAVING SUM(TotalAmount) > 5000;"
+            },
+            // --- Q26 (Joins - INNER & RIGHT) ---
+            {
+                prompt: "Tables: `Employee` (Name, DeptID), `Department` (ID, DeptName).\n" +
+                        "Write a query to list the `Name` and `DeptName` for employees. Only include employees who are assigned to a department.",
+                answer: "SELECT Employee.Name, Department.DeptName FROM Employee INNER JOIN Department ON Employee.DeptID = Department.ID;"
+            },
+            {
+                prompt: "Tables: `Orders` (OrderID, CustomerID), `Customers` (CustomerID, CustomerName).\n" +
+                        "Write a query to get the `OrderID` and `CustomerName` for all orders that have a valid customer. (Use the `JOIN` keyword, which defaults to `INNER JOIN`).",
+                answer: "SELECT Orders.OrderID, Customers.CustomerName FROM Orders JOIN Customers ON Orders.CustomerID = Customers.CustomerID;"
+            },
+            {
+                prompt: "Tables: `Employee` (Name, DeptID), `Department` (ID, DeptName).\n" +
+                        "Write a query to list ALL departments, and the names of employees in them. If a department has no employees, it should still be listed.",
+                answer: "SELECT Employee.Name, Department.DeptName FROM Employee RIGHT JOIN Department ON Employee.DeptID = Department.ID;"
+            },
+            {
+                prompt: "Tables: `Customers` (CustomerID, Name), `Orders` (OrderID, CustomerID).\n" +
+                        "Write a query to list all `Orders` and the `Name` of the customer who placed them. All orders must be included, even if their `CustomerID` is NULL.",
+                answer: "SELECT Customers.Name, Orders.OrderID FROM Customers RIGHT JOIN Orders ON Customers.CustomerID = Orders.CustomerID;"
+            },
+            // --- Q27 (ALTER TABLE - Modify/Change) ---
+            {
+                prompt: "The `Users` table has a column `Email` (VARCHAR(100)).\n" +
+                        "Write a SQL statement to rename this column to `EmailAddress` and change its data type to `VARCHAR(150)`.",
+                answer: "ALTER TABLE Users CHANGE Email EmailAddress VARCHAR(150);"
+            },
+            {
+                prompt: "The `Products` table has a column `ProdName` (VARCHAR(50)).\n" +
+                        "Write the SQL to rename this column to `ProductName`. The data type (`VARCHAR(50)`) should remain the same.",
+                answer: "ALTER TABLE Products CHANGE ProdName ProductName VARCHAR(50);"
+            },
+            {
+                prompt: "The `Employee` table has a column `HireDate` (DATE).\n" +
+                        "Write the SQL to rename this column to `StartDate` while keeping the `DATE` data type.",
+                answer: "ALTER TABLE Employee CHANGE HireDate StartDate DATE;"
+            },
+            {
+                prompt: "The `Logs` table has a column `LogText` (VARCHAR(255)).\n" +
+                        "Write the SQL to rename this column to `LogMessage` and change its data type to `TEXT`.",
+                answer: "ALTER TABLE Logs CHANGE LogText LogMessage TEXT;"
+            },
+            // --- Q28 (Advanced CREATE - CHECK, Composite) ---
+            {
+                prompt: "Create a `Products` table with:\n" +
+                        "• `ProductID` - integer, primary key\n" +
+                        "• `Price` - decimal, must be greater than 0\n" +
+                        "• `Stock` - integer, must be 0 or more\n" +
+                        "Write the SQL using `CHECK` constraints.",
+                answer: "CREATE TABLE Products ( ProductID INT PRIMARY KEY, Price DECIMAL(10, 2) CHECK (Price > 0), Stock INT CHECK (Stock >= 0) );"
+            },
+            {
+                prompt: "Create an `Employee` table with:\n" +
+                        "• `EmployeeID` - integer, primary key\n" +
+                        "• `Status` - variable-length string, max 20\n" +
+                        "Write the SQL. The `Status` column must be one of the following: 'Active', 'On-Leave', or 'Terminated'.",
+                answer: "CREATE TABLE Employee ( EmployeeID INT PRIMARY KEY, Status VARCHAR(20) CHECK (Status IN ('Active', 'On-Leave', 'Terminated')) );"
+            },
+            {
+                prompt: "Create an `OrderItems` table with:\n" +
+                        "• `OrderID` - integer\n" +
+                        "• `ProductID` - integer\n" +
+                        "• `Quantity` - integer\n" +
+                        "Write the SQL. The primary key must be a composite key of BOTH `OrderID` and `ProductID`.",
+                answer: "CREATE TABLE OrderItems ( OrderID INT, ProductID INT, Quantity INT, PRIMARY KEY (OrderID, ProductID) );"
+            },
+            {
+                prompt: "Create an `Enrollment` table with:\n" +
+                        "• `StudentID` - integer\n" +
+                        "• `ClassID` - integer\n" +
+                        "• `Grade` - fixed-length string, 1 character\n" +
+                        "Write the SQL. The primary key must be a composite key of BOTH `StudentID` and `ClassID`.",
+                answer: "CREATE TABLE Enrollment ( StudentID INT, ClassID INT, Grade CHAR(1), PRIMARY KEY (StudentID, ClassID) );"
+            },
+            // --- Q29 (Advanced CREATE - ON DELETE, UNSIGNED) ---
+            {
+                prompt: "Tables: `Customers` (CustomerID, PK), `Orders` (OrderID, CustomerID, FK).\n" +
+                        "Write the `CREATE TABLE` statement for `Orders`. If a customer is deleted, the `CustomerID` in the `Orders` table should be set to `NULL`.",
+                answer: "CREATE TABLE Orders ( OrderID INT PRIMARY KEY, CustomerID INT, OrderDate DATE, FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID) ON DELETE SET NULL );"
+            },
+            {
+                prompt: "Tables: `Posts` (PostID, PK), `Comments` (CommentID, PostID, FK).\n" +
+                        "Write the `CREATE TABLE` statement for `Comments`. If a post is deleted, all of its associated comments should also be deleted.",
+                answer: "CREATE TABLE Comments ( CommentID INT PRIMARY KEY, PostID INT, CommentText TEXT, FOREIGN KEY (PostID) REFERENCES Posts(PostID) ON DELETE CASCADE );"
+            },
+            {
+                prompt: "Create an `Inventory` table with:\n" +
+                        "• `ItemID` - integer, primary key\n" +
+                        "• `StockQuantity` - integer, cannot be negative\n" +
+                        "Write the SQL using the `UNSIGNED` constraint for `StockQuantity`.",
+                answer: "CREATE TABLE Inventory ( ItemID INT PRIMARY KEY, StockQuantity INT UNSIGNED );"
+            },
+            {
+                prompt: "Create a `Users` table with:\n" +
+                        "• `UserID` - integer, primary key\n" +
+                        "Write the SQL. The `UserID` must be a positive, auto-incrementing number.",
+                answer: "CREATE TABLE Users ( UserID INT UNSIGNED AUTO_INCREMENT PRIMARY KEY );"
+            },
+            // --- Q30 (SELECT DISTINCT & DROP INDEX) ---
+            {
+                prompt: "The `Customers` table has a `Country` column.\n" +
+                        "Write a SQL query to find all unique `Country` values listed in the table.",
+                answer: "SELECT DISTINCT Country FROM Customers;"
+            },
+            {
+                prompt: "The `Products` table has a `Category` column.\n" +
+                        "Write a SQL query to show all unique `Category` values, sorted in ascending alphabetical order (A-Z).",
+                answer: "SELECT DISTINCT Category FROM Products ORDER BY Category ASC;"
+            },
+            {
+                prompt: "An index named `idx_email` exists on the `Users` table and is no longer needed.\n" +
+                        "Write the SQL statement to remove this index.",
+                answer: "DROP INDEX idx_email ON Users;"
+            },
+            {
+                prompt: "An index named `idx_lastname` on the `Employee` table must be removed to improve write speeds.\n" +
+                        "Write the SQL statement to drop this index.",
+                answer: "DROP INDEX idx_lastname ON Employee;"
+            },
+            // --- Q31 (NEW - Subqueries) ---
+            {
+                prompt: "The `Movie` table has `Title` and `Cost`.\n" +
+                        "Write a SQL query to pull all data for movies that were more expensive than the average cost.",
+                answer: "SELECT * FROM Movie WHERE Cost > (SELECT AVG(Cost) FROM Movie);"
+            },
+            {
+                prompt: "The `Employees` table has `employee_id`, `last_name`, and `salary`.\n" +
+                        "Write a query to find the `employee_id` and `last_name` for all employees whose salary is greater than the average salary.",
+                answer: "SELECT employee_id, last_name FROM Employees WHERE salary > (SELECT AVG(salary) FROM Employees);"
+            },
+            {
+                prompt: "The `Products` table has `Name` and `Price`.\n" +
+                        "Write a query to find the `Name` of all products *except* the single most expensive product.",
+                answer: "SELECT Name FROM Products WHERE Price < (SELECT MAX(Price) FROM Products);"
+            },
+            {
+                prompt: "Tables: `Customers` (CustomerID, Name), `Orders` (CustomerID, OrderID).\n" +
+                        "Write a query to find the `Name` of all customers who have placed at least one order. Use a subquery with `IN`.",
+                answer: "SELECT Name FROM Customers WHERE CustomerID IN (SELECT CustomerID FROM Orders);"
+            },
+            // --- Q32 (NEW - GROUP BY with Aggregates) ---
+            {
+                prompt: "The `Employee` table has `EmployeeType` and `Salary`.\n" +
+                        "Write a SQL statement to pull the `EmployeeType` and the highest salary (aliased as `MaxSalary`) for each `EmployeeType`.",
+                answer: "SELECT EmployeeType, MAX(Salary) AS MaxSalary FROM Employee GROUP BY EmployeeType;"
+            },
+            {
+                prompt: "The `Employee` table has `EmployeeType` and `Salary`.\n" +
+                        "Write a SQL statement to pull the `EmployeeType` and the lowest salary (aliased as `MinSalary`) for each `EmployeeType`.",
+                answer: "SELECT EmployeeType, MIN(Salary) AS MinSalary FROM Employee GROUP BY EmployeeType;"
+            },
+            {
+                prompt: "The `Products` table has `Category` and `Price`.\n" +
+                        "Write a query to find the average price (aliased as `AvgPrice`) for each `Category`.",
+                answer: "SELECT Category, AVG(Price) AS AvgPrice FROM Products GROUP BY Category;"
+            },
+            {
+                prompt: "The `Orders` table has `CustomerID` and `TotalAmount`.\n" +
+                        "Write a query to show each `CustomerID` and the total amount they have spent (aliased as `TotalSpend`). (Same as Q15.2, but good practice!).",
+                answer: "SELECT CustomerID, SUM(TotalAmount) AS TotalSpend FROM Orders GROUP BY CustomerID;"
+            }
+        ];
+
+
+        // --- 2. GET ELEMENT REFERENCES ---
+        const categoryListEl = document.getElementById('category-list');
+        
+        const questionNumberEl = document.getElementById('question-number');
+        const questionPromptEl = document.getElementById('question-prompt');
+        const userAnswerEl = document.getElementById('user-answer');
+        
+        const checkAnswerBtn = document.getElementById('check-answer');
+        const showAnswerBtn = document.getElementById('show-answer');
+        const nextQuestionBtn = document.getElementById('next-question');
+        
+        const feedbackMessageEl = document.getElementById('feedback-message');
+        const correctAnswerAreaEl = document.getElementById('correct-answer-area');
+        const correctAnswerTextEl = document.getElementById('correct-answer-text');
+
+        // --- 3. STATE ---
+        let activeCategoryIndex = 0;
+        let questionIndexWithinCategory = 0;
+        let activeQuestions = [];
+        let completedCategories = new Set(); // NEW: To track completed categories
+
+        // --- 4. FUNCTIONS ---
+
+        /**
+         * Populates the left-hand category list with clickable buttons.
+         */
+        function populateCategoryList() {
+            categoryListEl.innerHTML = ''; // Clear existing list
+            
+            questionCategories.forEach((categoryName, index) => {
+                const li = document.createElement('li');
+                const button = document.createElement('button');
+                
+                button.textContent = categoryName;
+                button.dataset.categoryIndex = index;
+                button.className = "category-button w-full text-left p-2 rounded hover:bg-blue-100 transition-colors duration-150";
+                
+                button.addEventListener('click', () => {
+                    loadCategory(index);
+                });
+                
+                li.appendChild(button);
+                categoryListEl.appendChild(li);
+            });
+        }
+
+        /**
+         * NEW: Applies 'completed' styling to category buttons based on the Set.
+         */
+        function updateCategoryListUI() {
+            document.querySelectorAll('.category-button').forEach(button => {
+                const index = parseInt(button.dataset.categoryIndex, 10);
+                if (completedCategories.has(index)) {
+                    button.classList.add('completed');
+                } else {
+                    button.classList.remove('completed');
+                }
+            });
+        }
+
+        /**
+         * NEW: Saves the 'completedCategories' Set to localStorage.
+         */
+        function saveProgress() {
+            localStorage.setItem('sqlQuizProgress', JSON.stringify(Array.from(completedCategories)));
+            updateCategoryListUI(); // Update UI after saving
+        }
+
+        /**
+         * NEW: Loads progress from localStorage on page load.
+         */
+        function loadProgress() {
+            const savedProgress = JSON.parse(localStorage.getItem('sqlQuizProgress') || '[]');
+            completedCategories = new Set(savedProgress);
+            updateCategoryListUI(); // Apply styles on load
+        }
+
+        /**
+         * Loads a set of 4 questions based on the selected category.
+         */
+        function loadCategory(categoryIndex) {
+            activeCategoryIndex = categoryIndex;
+            questionIndexWithinCategory = 0;
+            
+            const startIndex = categoryIndex * 4;
+            // Ensure we don't slice past the end of the array if questions are missing
+            const endIndex = Math.min(startIndex + 4, drillQuestions.length);
+            activeQuestions = drillQuestions.slice(startIndex, endIndex);
+            
+            // Update active button styling
+            document.querySelectorAll('.category-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const activeButton = document.querySelector(`.category-button[data-category-index="${categoryIndex}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+
+            loadQuestion();
+        }
+
+        /**
+         * Loads a single question into the UI from the active category.
+         */
+        function loadQuestion() {
+            if (activeQuestions.length === 0) {
+                // Safety check if a category has no questions
+                questionPromptEl.innerHTML = "No questions found for this category.";
+                questionNumberEl.textContent = `0 of 0`;
+                return;
+            }
+            // Get the current question object
+            const question = activeQuestions[questionIndexWithinCategory];
+            
+            // Set the UI elements
+            questionNumberEl.textContent = `${questionIndexWithinCategory + 1} of ${activeQuestions.length}`;
+            // Use innerHTML to render line breaks from \n
+            questionPromptEl.innerHTML = question.prompt.replace(/\n/g, '<br>');
+            
+            // Reset UI state
+            userAnswerEl.value = '';
+            feedbackMessageEl.classList.add('hidden');
+            correctAnswerAreaEl.classList.add('hidden');
+            userAnswerEl.focus();
+        }
+
+        /**
+         * Cleans and normalizes a SQL string for comparison.
+         */
+        function normalizeSql(sql) {
+            if (typeof sql !== 'string') return '';
+            return sql.replace(/\s+/g, ' ')
+                      .trim()
+                      .toLowerCase()
+                      .replace(/;$/, '');
+        }
+
+        /**
+         * Handles the "Check Answer" button click
+         */
+        function checkAnswer() {
+            if (activeQuestions.length === 0) return;
+            const userAnswer = normalizeSql(userAnswerEl.value);
+            const correctAnswer = normalizeSql(activeQuestions[questionIndexWithinCategory].answer);
+
+            feedbackMessageEl.classList.remove('hidden', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700');
+
+            if (userAnswer === correctAnswer) {
+                feedbackMessageEl.textContent = 'Correct!';
+                feedbackMessageEl.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                feedbackMessageEl.textContent = 'Incorrect, please try again.';
+                feedbackMessageEl.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+
+        /**
+         * Handles the "Show Answer" button click
+         */
+        function showAnswer() {
+            if (activeQuestions.length === 0) return;
+            correctAnswerTextEl.textContent = activeQuestions[questionIndexWithinCategory].answer;
+            correctAnswerAreaEl.classList.remove('hidden');
+        }
+
+        /**
+         * Handles the "Next Question" button click (loops within the category)
+         */
+        function nextQuestion() {
+            if (activeQuestions.length === 0) return;
+
+            // Check if we are on the *last* question *before* incrementing
+            const wasOnLastQuestion = questionIndexWithinCategory === activeQuestions.length - 1;
+
+            // Move to the next index within the category
+            questionIndexWithinCategory++;
+            
+            // Loop back to the beginning if at the end of the category
+            if (questionIndexWithinCategory >= activeQuestions.length) {
+                questionIndexWithinCategory = 0;
+            }
+
+            // *** NEW LOGIC ***
+            // If we were on the last question, mark the category as complete and save.
+            if (wasOnLastQuestion) {
+                completedCategories.add(activeCategoryIndex);
+                saveProgress(); // Save and update UI
+            }
+            // *** END NEW LOGIC ***
+            
+            // Load the new question
+            loadQuestion();
+        }
+
+        // --- 5. EVENT LISTENERS ---
+        checkAnswerBtn.addEventListener('click', checkAnswer);
+        showAnswerBtn.addEventListener('click', showAnswer);
+        nextQuestionBtn.addEventListener('click', nextQuestion);
+
+        // --- 6. INITIALIZATION ---
+        // Populate the category list on the left
+        populateCategoryList();
+        
+        // NEW: Load saved progress from localStorage
+        loadProgress();
+        
+        // Load the first category ("CREATE TABLE (Basic)") by default
+        loadCategory(0);
+
+    </script>
+</body>
+</html>
